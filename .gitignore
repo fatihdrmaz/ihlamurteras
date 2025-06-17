@@ -24,7 +24,7 @@ logs/
 
 # Images and large files (add your own patterns if needed)
 *.360
-*.jpg
+# *.jpg
 *.jpeg
 *.png
 *.gif

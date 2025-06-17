@@ -40,6 +40,77 @@ const steeringWheelPoint = {
     description: "Araç kontrolü için kullanılan direksiyon simidi."
 };
 
+const MAIN_PANORAMA = 'GS__0369.JPG'; // Ana görselin dosya adı
+
+// Side panel oluştur (eğer yoksa)
+function ensureSidePanel() {
+    let panel = document.getElementById('side-panel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'side-panel';
+        panel.style.position = 'fixed';
+        panel.style.bottom = '20px';
+        panel.style.right = '20px';
+        panel.style.width = '320px';
+        panel.style.background = 'rgba(255,255,255,0.97)';
+        panel.style.borderRadius = '16px';
+        panel.style.boxShadow = '0 2px 16px rgba(0,0,0,0.15)';
+        panel.style.padding = '20px';
+        panel.style.zIndex = '2000';
+        panel.style.display = 'none';
+        panel.style.flexDirection = 'column';
+        panel.style.gap = '12px';
+        panel.style.maxHeight = '60vh';
+        panel.style.overflowY = 'auto';
+        document.body.appendChild(panel);
+    }
+    return panel;
+}
+
+function showSidePanel(imgSrc, title, description) {
+    const panel = ensureSidePanel();
+    panel.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;">${title}</h3>
+            <button id="close-side-panel" style="background:none;border:none;font-size:22px;cursor:pointer;">&times;</button>
+        </div>
+        <img src="${imgSrc}" alt="${title}" style="width:100%;border-radius:10px;object-fit:cover;max-height:160px;margin:10px 0;" />
+        <div style="font-size:15px;color:#333;">${description}</div>
+    `;
+    panel.style.display = 'flex';
+    document.getElementById('close-side-panel').onclick = () => {
+        panel.style.display = 'none';
+    };
+}
+
+function hideSidePanel() {
+    const panel = document.getElementById('side-panel');
+    if (panel) panel.style.display = 'none';
+}
+
+function ensureBackButton() {
+    let btn = document.getElementById('back-to-main');
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'back-to-main';
+        btn.textContent = 'Ana Görsele Dön';
+        btn.style.position = 'fixed';
+        btn.style.top = '20px';
+        btn.style.right = '20px';
+        btn.style.zIndex = '3000';
+        btn.style.padding = '10px 18px';
+        btn.style.background = '#c44';
+        btn.style.color = '#fff';
+        btn.style.border = 'none';
+        btn.style.borderRadius = '8px';
+        btn.style.fontSize = '16px';
+        btn.style.cursor = 'pointer';
+        btn.style.display = 'none';
+        document.body.appendChild(btn);
+    }
+    return btn;
+}
+
 // Sahneyi başlat
 function init() {
     try {
@@ -86,7 +157,7 @@ function init() {
         
         // 360 panorama görüntüsünü yükle
         textureLoader.load(
-            'GS__0369.JPG', // Yeni panorama dosyası
+            MAIN_PANORAMA,
             function(texture) {
                 console.log('Texture yüklendi');
                 const material = new THREE.MeshBasicMaterial({
@@ -123,6 +194,12 @@ function init() {
         window.addEventListener('resize', onWindowResize);
         window.addEventListener('click', onMouseClick);
         closeButton.addEventListener('click', closePopup);
+
+        // Back button click
+        const backBtn = ensureBackButton();
+        backBtn.onclick = () => {
+            changePanorama(MAIN_PANORAMA);
+        };
 
         // Animasyon döngüsünü başlat
         animate();
@@ -177,7 +254,7 @@ function addCustomMarker(markerPosition) {
     const circleDiv = document.createElement('div');
     circleDiv.className = 'marker-circle';
     const img = document.createElement('img');
-    img.src = 'GS__0369.JPG';
+    img.src = MAIN_PANORAMA;
     circleDiv.appendChild(img);
 
     const labelDiv = document.createElement('div');
@@ -197,7 +274,15 @@ function addCustomMarker(markerPosition) {
 
     markerDiv.addEventListener('click', function(e) {
         e.stopPropagation();
-        showPopup('Giriş', 'Burası otelin ana giriş noktasıdır.');
+        changePanorama(
+            'GS__0363.JPG',
+            true,
+            {
+                img: 'GS__0363.JPG',
+                title: 'Oda 101',
+                desc: 'Bu oda demo amaçlıdır. Geniş, ferah ve manzaralıdır. <br> Özellikler: <ul><li>Çift kişilik yatak</li><li>Klima</li><li>Ücretsiz Wi-Fi</li></ul>'
+            }
+        );
     });
 
     function updateMarkerPosition() {
@@ -255,6 +340,42 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
+}
+
+// Yeni panorama yükleme fonksiyonu
+let currentSphere = null;
+function changePanorama(imgSrc, showPanel = false, panelData = null) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(
+        imgSrc,
+        function(texture) {
+            if (currentSphere) {
+                scene.remove(currentSphere);
+            }
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1);
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const sphere = new THREE.Mesh(geometry, material);
+            scene.add(sphere);
+            currentSphere = sphere;
+
+            // Butonun görünürlüğünü ayarla
+            const backBtn = ensureBackButton();
+            if (imgSrc !== MAIN_PANORAMA) {
+                backBtn.style.display = 'block';
+                if (showPanel && panelData) {
+                    showSidePanel(panelData.img, panelData.title, panelData.desc);
+                }
+            } else {
+                backBtn.style.display = 'none';
+                hideSidePanel();
+            }
+        },
+        undefined,
+        function(error) {
+            alert('Görsel yüklenemedi!');
+        }
+    );
 }
 
 // Sayfayı yükle
